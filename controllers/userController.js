@@ -1,6 +1,7 @@
 import userModel from '../models/user.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import transporter from '../config/emailConfig.js';
 
 
 class UserController {
@@ -106,7 +107,13 @@ class UserController {
                 const token = jwt.sign({ userId: user._id }, secret, { expiresIn: '10m' });
                 const link = ` http://localhost:3000/api/user/reset/${user._id}/${token}`;
                 console.log(link);
-                res.send({ status: 'success', message: 'Password reset email send successfully.' });
+                let info = await transporter.sendMail({
+                    from: process.env.EMAIL_FROM,
+                    to: user.email,
+                    subject: "GeekShop - Password Reset Link",
+                    html: `<a href=${link}>Click here</a> to Reset Your Password.`
+                })
+                res.send({ status: 'success', message: 'Password reset email send successfully.', "info": info });
             } else {
                 res.send({ "status": "failed", "message": "Invalid email." });
             }
@@ -121,7 +128,7 @@ class UserController {
         const user = await userModel.findById(id);
         const new_secret = await user._id + process.env.JWT_SECRET_KEY;
         try {
-            jwt.verify(token, new_secret)
+            jwt.verify(token, new_secret);
             if (password && confirm_password) {
                 if (password !== confirm_password) {
                     res.send({ "status": "failed", "message": "Password and confirm password doesn't match." });
@@ -137,9 +144,9 @@ class UserController {
                 res.send({ "status": "failed", "message": "All fields are required." });
             }
         } catch (error) {
-            res.send({ "status": "failed", "message": "Invalid Token." })
-        }
-    }
+            res.send({ "status": "failed", "message": "Invalid Token." });
+        };
+    };
 };
 
 export default UserController;
